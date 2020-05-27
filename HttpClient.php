@@ -41,7 +41,6 @@ class HttpClient
      */
     private function validateUrl($url)
     {
-
         $url_arr = explode('://', $url);
         if (count($url_arr) !== 2) {
             throw new Exception("Invalid URL format!");
@@ -71,8 +70,10 @@ class HttpClient
     }
 
     /**
-     * Authenticate to server
-     * @param string 
+     * Get Authentication token
+     * @param string the url to send OPTIONS request to
+     * @throws Exception Unable to get token
+     * @return string the authentication token 
      */
     private function getToken($url)
     {
@@ -90,12 +91,13 @@ class HttpClient
         );
 
         if ($response == false) {
-            throw new Exception('Unable to authenticate!');
+            throw new Exception('Unable to get token!');
         }
-        return $response;
+        $this->token = $response;
     }
+
     /**
-     * Basic request method.
+     * Send a request to given url, with given metod and optional data.
      * @param string $method the http request method
      * @param string $url the url for the request
      * @param array $data the data to send as an associative array
@@ -107,19 +109,20 @@ class HttpClient
             'method' => $this->validateMethod($method),
             'protocol' => $url_arr['protocol'],
             'url' => $url_arr['url'],
-            'data' => $this->validateData($data),
-            'token' => $this->getToken($url_arr['url'])
+            'data' => $this->validateData($data)
         );
-        $token = $request['token'];
+        $token = $this->getToken($url_arr['url']); //"d417fcbc-94b7-4357-aff3-536c33364428"
 
         $options = array(
             'http' => array(
                 'method' => $request['method'],
-                'header' => "Authentication: Bearer $token, Content-type: application/x-www-form-urlencoded",
+                'header' => array(
+                    "Authentication: Basic $token",
+                    "Content-type: application/x-www-form-urlencoded"
+                ),
                 'content' => $request['data']
             )
         );
-
         $context = stream_context_create($options);
         $response = file_get_contents(
             $request['url'],
@@ -127,6 +130,14 @@ class HttpClient
             $context
         );
 
-        print_r($response);
+        if ($response == false) {
+            throw new Exception("Unable to fulfill request!");
+        };
+
+        $json_response = json_decode($response->data);
+        if ($json_response === NULL) {
+            throw new Exception("Unable to read response!");
+        }
+        return $json_response;
     }
 }
