@@ -11,12 +11,12 @@ class HttpClient
     /**
      * An array of available http methods, used for internal validation of requests.
      */
-    private const METHODS = ['GET', 'PUT', 'POST', 'OPTIONS', 'DELETE'];
+    private const METHODS = ["GET", "PUT", "POST", "OPTIONS", "DELETE"];
 
     /**
      * An array of available protocols, used for internal validation of requests.
      */
-    private const PROTOCOLS = ['http', 'https'];
+    private const PROTOCOLS = ["http", "https"];
 
     /**
      * Validates request method and converts it to uppercase
@@ -41,7 +41,7 @@ class HttpClient
      */
     private function validateUrl($url)
     {
-        $url_arr = explode('://', $url);
+        $url_arr = explode("://", $url);
         if (count($url_arr) !== 2) {
             throw new Exception("Invalid URL format!");
         }
@@ -49,8 +49,8 @@ class HttpClient
             throw new Exception("Invalid protocol!");
         }
         return array(
-            'protocol' => $url_arr[0],
-            'url' => $url
+            "protocol" => $url_arr[0],
+            "url" => $url
         );
     }
 
@@ -78,9 +78,9 @@ class HttpClient
     private function getToken($url)
     {
         $options = array(
-            'http' => array(
-                'method' => 'OPTIONS',
-                'header' => 'Content-type: application/x-www-form-urlencoded'
+            "http" => array(
+                "method" => "OPTIONS",
+                "header" => "Content-type: application/x-www-form-urlencoded"
             )
         );
         $context = stream_context_create($options);
@@ -91,9 +91,9 @@ class HttpClient
         );
 
         if ($response == false) {
-            throw new Exception('Unable to get token!');
+            throw new Exception("Unable to get token!");
         }
-        $this->token = $response;
+        return $response;
     }
 
     /**
@@ -106,26 +106,28 @@ class HttpClient
     {
         $url_arr = $this->validateUrl($url);
         $request = array(
-            'method' => $this->validateMethod($method),
-            'protocol' => $url_arr['protocol'],
-            'url' => $url_arr['url'],
-            'data' => $this->validateData($data)
+            "method" => $this->validateMethod($method),
+            "protocol" => $url_arr["protocol"],
+            "url" => $url_arr["url"],
+            "data" => $this->validateData($data)
         );
-        $token = $this->getToken($url_arr['url']); //"d417fcbc-94b7-4357-aff3-536c33364428"
+        $token = $this->getToken($url_arr["url"]); //"d417fcbc-94b7-4357-aff3-536c33364428"
 
         $options = array(
-            'http' => array(
-                'method' => $request['method'],
-                'header' => array(
-                    "Authentication: Basic $token",
-                    "Content-type: application/x-www-form-urlencoded"
+            "http" => array(
+                "method" => $request["method"],
+                "header" => array(
+                    "Authorization: bearer $token",
+                    // "Authorization: bearer d417fcbc-94b7-4357-aff3-536c33364428",
+                    "Content-Type: application/x-www-form-urlencoded" //; charset=UTF8"
                 ),
-                'content' => $request['data']
+                "content" => $request["data"]
+                // "content" => http_build_query($request["data"])
             )
         );
         $context = stream_context_create($options);
         $response = file_get_contents(
-            $request['url'],
+            $request["url"],
             false,
             $context
         );
@@ -134,7 +136,7 @@ class HttpClient
             throw new Exception("Unable to fulfill request!");
         };
 
-        $json_response = json_decode($response->data);
+        $json_response = json_decode($response);
         if ($json_response === NULL) {
             throw new Exception("Unable to read response!");
         }
